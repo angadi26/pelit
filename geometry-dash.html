@@ -296,18 +296,12 @@
                     x += 35;
                 } else if (rand < 0.6) {
                     obstacles.push({ x: x, y: 50, width: 30, height: 30, type: 'spike-up' });
-                } else if (rand < 0.75) {
-                    const platY = GROUND_Y - 80 - Math.random() * 80;
-                    obstacles.push({ x: x, y: platY, width: 60, height: 15, type: 'platform' });
-                } else if (rand < 0.85) {
+                } else {
                     const count = 3;
                     for (let i = 0; i < count; i++) {
                         obstacles.push({ x: x + i * 35, y: GROUND_Y - 30, width: 30, height: 30, type: 'spike' });
                     }
                     x += 70;
-                } else {
-                    const platY = GROUND_Y - 120 - Math.random() * 60;
-                    obstacles.push({ x: x, y: platY, width: 80, height: 15, type: 'platform' });
                 }
                 
                 x += 400 + Math.random() * 100;
