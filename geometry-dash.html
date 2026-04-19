@@ -565,7 +565,7 @@
         function gameLoop() {
             update();
             draw();
-            if (!gameActive && !gameOver) {
+            if (!gameActive && !gameOver && !startScreen.dataset.started) {
                 startScreen.style.display = 'flex';
             }
             requestAnimationFrame(gameLoop);
@@ -586,6 +586,7 @@
         });
 
         startBtn.addEventListener('click', () => {
+            startScreen.dataset.started = 'true';
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
             resetGame();
