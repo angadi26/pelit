@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Amunta - Löydä Aseet ja Panokset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+        #game-container { width: 100vw; height: 100vh; position: relative; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #0f0;
+            font-size: 18px;
+            text-shadow: 0 0 10px #0f0;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #ammo-count { color: #ff0; margin-left: 20px; }
+        #health-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 30px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #f00;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #health-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #f00, #0f0);
+            transition: width 0.3s;
+        }
+        #health-text {
+            position: absolute;
+            bottom: 65px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f00;
+            font-size: 20px;
+            text-shadow: 0 0 10px #f00;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #0f0;
+            box-shadow: 0 0 5px #0f0;
+        }
+        #crosshair::before {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #crosshair::after {
+            width: 2px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0;
+            font-size: 32px;
+            text-shadow: 0 0 20px #ff0;
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 200;
+            text-align: center;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+        #start-screen h1 {
+            color: #f00;
+            font-size: 60px;
+            text-shadow: 0 0 30px #f00;
+            margin-bottom: 20px;
+        }
+        #start-screen p {
+            color: #aaa;
+            font-size: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+        }
+        #start-btn {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: #f00;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        #start-btn:hover {
+            background: #0f0;
+            box-shadow: 0 0 30px #0f0;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #666;
+            font-size: 14px;
+            text-align: right;
+        }
+        #voice-status {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: #0ff;
+            font-size: 16px;
+            text-shadow: 0 0 10px #0ff;
+        }
+        #voice-btn {
+            position: absolute;
+            top: 20px;
+            left: 200px;
+            padding: 10px 20px;
+            background: #0ff;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .weapon-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff0;
+            font-size: 16px;
+            text-shadow: 0 0 10px #ff0;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <div>ELÄMÄT: <span id="health">100</span></div>
+            <div id="ammo-count">PANOKSET: <span id="ammo">0</span></div>
+        </div>
+        <button id="voice-btn">🎤 PUHE</button>
+        <div id="voice-status">🛑 Odottaa...</div>
+        <div class="weapon-info">ASE: <span id="weapon">Pistooli</span></div>
+        <div id="health-text">ELÄMÄT</div>
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="crosshair"></div>
+        <div id="message"></div>
+        <div id="controls">
+            WASD = Liiku | Hiiri = Katso | V = Ammu | E = Ota esine | Space = Hyppy
+        </div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>3D AMUNTA</h1>
+        <p>Löydä aseet ja panokset varastosta!<br>Tappa viholliset ja selviä hengissä.</p>
+        <button id="start-btn">ALOITA PELI</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, player;
+        let weapons = [];
+        let ammo = 30;
+        let health = 100;
+        let hasGun = false;
+        let currentWeapon = 'Pistooli';
+        let bullets = [];
+        let enemies = [];
+        let items = [];
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let velocity = new THREE.Vector3();
+        let canJump = true;
+        let isLocked = false;
+        let recognition;
+        
+        const startScreen = document.getElementById('start-screen');
+        const voiceStatus = document.getElementById('voice-status');
+        const voiceBtn = document.getElementById('voice-btn');
+        const startBtn = document.getElementById('start-btn');
+        const healthFill = document.getElementById('health-fill');
+        const healthText = document.getElementById('health');
+        const ammoText = document.getElementById('ammo');
+        const weaponText = document.getElementById('weapon');
+        const messageEl = document.getElementById('message');
+        
+        startBtn.addEventListener('click', startGame);
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        document.addEventListener('mousedown', shoot);
+        document.addEventListener('click', () => { if(isLocked) {} });
+        
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 10, 100);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+            
+            createEnvironment();
+            createPlayer();
+            createWeapons();
+            createEnemies();
+            createItems();
+            
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousemove', onMouseMove);
+        }
+        
+        function createEnvironment() {
+            const floorGeometry = new THREE.PlaneGeometry(200, 200);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2a2a3e,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            for(let i = 0; i < 50; i++) {
+                const boxGeo = new THREE.BoxGeometry(5, Math.random() * 10 + 5, 5);
+                const boxMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4e });
+                const box = new THREE.Mesh(boxGeo, boxMat);
+                box.position.set(
+                    (Math.random() - 0.5) * 180,
+                    box.geometry.parameters.height / 2,
+                    (Math.random() - 0.5) * 180
+                );
+                box.castShadow = true;
+                box.receiveShadow = true;
+                scene.add(box);
+            }
+            
+            for(let i = 0; i < 20; i++) {
+                const wallGeo = new THREE.BoxGeometry(20, 10, 1);
+                const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4a5e });
+                const wall = new THREE.Mesh(wallGeo, wallMat);
+                const angle = (Math.random() * Math.PI * 2);
+                wall.position.set(
+                    Math.cos(angle) * 40,
+                    5,
+                    Math.sin(angle) * 40
+                );
+                wall.rotation.y = angle;
+                wall.castShadow = true;
+                scene.add(wall);
+            }
+        }
+        
+        function createPlayer() {
+            player = new THREE.Group();
+            camera.position.set(0, 2, 0);
+            player.add(camera);
+            player.position.set(0, 0, 0);
+            scene.add(player);
+        }
+        
+        function createWeapons() {
+            const gunPositions = [
+                { x: 10, z: 10, name: 'Pistooli', ammo: 30 },
+                { x: -15, z: 20, name: 'Kivääri', ammo: 100 },
+                { x: 25, z: -15, name: 'Haulikko', ammo: 20 },
+                { x: -20, z: -25, name: 'Snipaari', ammo: 10 }
+            ];
+            
+            gunPositions.forEach(pos => {
+                const gunGeo = new THREE.BoxGeometry(0.3, 0.3, 0.8);
+                const gunMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x888888,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.3
+                });
+                const gun = new THREE.Mesh(gunGeo, gunMat);
+                gun.position.set(pos.x, 1.5, pos.z);
+                gun.userData = { isGun: true, name: pos.name, ammo: pos.ammo };
+                scene.add(gun);
+                weapons.push(gun);
+            });
+        }
+        
+        function createEnemies() {
+            for(let i = 0; i < 8; i++) {
+                const enemyGeo = new THREE.CapsuleGeometry(0.5, 1.5, 4, 8);
+                const enemyMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xff0000,
+                    emissive: 0x330000
+                });
+                const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+                enemy.position.set(
+                    (Math.random() - 0.5) * 80,
+                    1.25,
+                    (Math.random() - 0.5) * 80
+                );
+                enemy.userData = { health: 50 };
+                scene.add(enemy);
+                enemies.push(enemy);
+            }
+        }
+        
+        function createItems() {
+            const itemPositions = [
+                { x: 5, z: 5, type: 'ammo', amount: 30, color: 0xffff00 },
+                { x: -10, z: 15, type: 'ammo', amount: 50, color: 0xffff00 },
+                { x: 20, z: -10, type: 'health', amount: 25, color: 0x00ff00 },
+                { x: -15, z: -20, type: 'ammo', amount: 30, color: 0xffff00 }
+            ];
+            
+            itemPositions.forEach(pos => {
+                const itemGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                const itemMat = new THREE.MeshStandardMaterial({ 
+                    color: pos.color,
+                    emissive: pos.color,
+                    emissiveIntensity: 0.5
+                });
+                const item = new THREE.Mesh(itemGeo, itemMat);
+                item.position.set(pos.x, 1, pos.z);
+                item.userData = { isItem: true, type: pos.type, amount: pos.amount };
+                scene.add(item);
+                items.push(item);
+            });
+        }
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            renderer.domElement.requestPointerLock();
+            isLocked = true;
+            init();
+            initVoice();
+            animate();
+        }
+        
+        function initVoice() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                voiceStatus.textContent = 'Ei tuettu';
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.lang = 'fi-FI';
+            recognition.interimResults = false;
+            
+            recognition.onstart = () => {
+                voiceStatus.textContent = '🎤 Kuuntelee...';
+            };
+            
+            recognition.onend = () => {
+                voiceStatus.textContent = '🔄 Käynnistyy...';
+                try { recognition.start(); } catch(e) {}
+            };
+            
+            recognition.onresult = (event) => {
+                const last = event.results.length - 1;
+                const command = event.results[last][0].transcript.toLowerCase();
+                voiceStatus.textContent = '📢 ' + command;
+                processVoiceCommand(command);
+            };
+            
+            voiceBtn.addEventListener('click', () => {
+                try { recognition.start(); } catch(e) { voiceStatus.textContent = 'Käynnistys...'; }
+            });
+            
+            try { recognition.start(); } catch(e) {}
+        }
+        
+        function processVoiceCommand(cmd) {
+            if (cmd.includes('eteen') || cmd.includes('eteenpäin') || cmd.includes('前进')) {
+                moveForward = true; setTimeout(() => moveForward = false, 500);
+            }
+            if (cmd.includes('taakse') || cmd.includes('taaksepäin') || cmd.includes('后退')) {
+                moveBackward = true; setTimeout(() => moveBackward = false, 500);
+            }
+            if (cmd.includes('vasen')) {
+                moveLeft = true; setTimeout(() => moveLeft = false, 500);
+            }
+            if (cmd.includes('oikea')) {
+                moveRight = true; setTimeout(() => moveRight = false, 500);
+            }
+            if (cmd.includes('hypp') || cmd.includes('hypätä') || cmd.includes('跳')) {
+                if (canJump) { velocity.y = 0.3; canJump = false; }
+            }
+            if (cmd.includes('ammu') || cmd.includes('lauku') || cmd.includes('ampua') || cmd.includes('射击')) {
+                shoot();
+            }
+            if (cmd.includes('ota') || cmd.includes('oottaa') || cmd.includes('取')) {
+                pickupGun(); pickUpItems();
+            }
+            if (cmd.includes('panos') || cmd.includes('ammus') || cmd.includes('弹药')) {
+                pickUpItems();
+            }
+            if (cmd.includes('paranna') || cmd.includes('tervey') || cmd.includes('治疗')) {
+                pickUpItems();
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!isLocked) return;
+            camera.rotation.y -= event.movementX * 0.002;
+            camera.rotation.x -= event.movementY * 0.002;
+            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+        }
+        
+        function shoot() {
+            if (!isLocked || ammo <= 0) return;
+            
+            ammo--;
+            ammoText.textContent = ammo;
+            
+            const bulletGeo = new THREE.SphereGeometry(0.1);
+            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            bullet.position.copy(camera.position);
+            
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            bullet.userData = { velocity: dir.multiplyScalar(2) };
+            
+            scene.add(bullet);
+            bullets.push(bullet);
+            
+            checkHits(bullet);
+        }
+        
+        function checkHits(bullet) {
+            enemies.forEach(enemy => {
+                if (bullet.position.distanceTo(enemy.position) < 2) {
+                    enemy.userData.health -= 25;
+                    if (enemy.userData.health <= 0) {
+                        scene.remove(enemy);
+                        enemies = enemies.filter(e => e !== enemy);
+                    }
+                }
+            });
+        }
+        
+        function onKeyDown(event) {
+            switch(event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Space': 
+                    if (canJump) {
+                        velocity.y = 0.3;
+                        canJump = false;
+                    }
+                    break;
+                case 'KeyE': pickUpItems(); break;
+                case 'KeyV': 
+                    if (!hasGun) {
+                        pickupGun();
+                    } else {
+                        shoot();
+                    }
+                    break;
+            }
+        }
+        
+        function onKeyUp(event) {
+            switch(event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        }
+        
+        function pickupGun() {
+            weapons.forEach(gun => {
+                if (camera.position.distanceTo(gun.position) < 3) {
+                    hasGun = true;
+                    currentWeapon = gun.userData.name;
+                    ammo += gun.userData.ammo;
+                    weaponText.textContent = currentWeapon;
+                    ammoText.textContent = ammo;
+                    scene.remove(gun);
+                    weapons = weapons.filter(w => w !== gun);
+                    showMessage('SAIT ASEEN: ' + currentWeapon);
+                }
+            });
+        }
+        
+        function pickUpItems() {
+            items.forEach(item => {
+                if (camera.position.distanceTo(item.position) < 3) {
+                    if (item.userData.type === 'ammo') {
+                        ammo += item.userData.amount;
+                        ammoText.textContent = ammo;
+                        showMessage('SAIT PANOKSET: ' + item.userData.amount);
+                    } else if (item.userData.type === 'health') {
+                        health = Math.min(100, health + item.userData.amount);
+                        healthText.textContent = health;
+                        healthFill.style.width = health + '%';
+                        showMessage('ELÄMÄT +' + item.userData.amount);
+                    }
+                    scene.remove(item);
+                    items = items.filter(i => i !== item);
+                }
+            });
+        }
+        
+        function showMessage(text) {
+            messageEl.textContent = text;
+            messageEl.style.opacity = 1;
+            setTimeout(() => messageEl.style.opacity = 0, 2000);
+        }
+        
+        function updateBullets() {
+            bullets.forEach(bullet => {
+                bullet.position.add(bullet.userData.velocity);
+                if (bullet.position.length() > 100) {
+                    scene.remove(bullet);
+                    bullets = bullets.filter(b => b !== bullet);
+                }
+            });
+        }
+        
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                const dir = camera.position.clone().sub(enemy.position).normalize();
+                enemy.position.add(dir.multiplyScalar(0.02));
+                enemy.lookAt(camera.position);
+                
+                if (camera.position.distanceTo(enemy.position) < 2) {
+                    health -= 1;
+                    healthText.textContent = health;
+                    healthFill.style.width = health + '%';
+                    if (health <= 0) {
+                        showMessage('GAME OVER!');
+                        setTimeout(() => location.reload(), 3000);
+                    }
+                }
+            });
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!isLocked) return;
+            
+            const direction = new THREE.Vector3();
+            if (moveForward) direction.z -= 1;
+            if (moveBackward) direction.z += 1;
+            if (moveLeft) direction.x -= 1;
+            if (moveRight) direction.x += 1;
+            
+            direction.normalize();
+            direction.applyQuaternion(camera.quaternion);
+            direction.y = 0;
+            
+            player.position.add(direction.multiplyScalar(0.2));
+            camera.position.copy(player.position);
+            camera.position.y = 2;
+            
+            velocity.y -= 0.01;
+            camera.position.y += velocity.y;
+            if (camera.position.y < 2) {
+                velocity.y = 0;
+                camera.position.y = 2;
+                canJump = true;
+            }
+            
+            updateBullets();
+            updateEnemies();
+            
+            renderer.render(scene, camera);
+        }
+        
+        document.addEventListener('pointerlockchange', () => {
+            isLocked = document.pointerLockElement === renderer.domElement;
+        });
+    </script>
+</body>
+</html>
